@@ -1,0 +1,7 @@
+{
+  "recommendations": [
+    "EditorConfig.EditorConfig",
+    "matklad.rust-analyzer",
+    "tamasfe.even-better-toml"
+  ]
+}
