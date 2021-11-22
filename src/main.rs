@@ -16,6 +16,12 @@ async fn main() {
         .build()
         .unwrap();
 
+    let route_graphql_http = getenvd("ROUTE_GRAPHQL_HTTP", "/");
+    let route_graphql_ws = getenvd("ROUTE_GRAPHQL_WS", "/ws");
+    let route_playground = getenvd("ROUTE_PLAYGROUND", &route_graphql_http);
+
+    let playground_request_credentials = getenvd("PLAYGROUND_REQUEST_CREDENTIALS", "same-origin");
+
     let azure_client_id = getenv("AZURE_CLIENT_ID");
     let azure_client_secret = getenv("AZURE_CLIENT_SECRET");
     let azure_tenant_id = getenv("AZURE_TENANT_ID");
@@ -47,9 +53,27 @@ async fn main() {
     let schema = graphql::schema().data(core).data(instance_loader).finish();
 
     let app = Router::new();
-    let app = GraphQL::routes(app, schema);
+    let app = GraphQL::routes(
+        app,
+        schema,
+        vm_onoff::api::http::axum::config::Config {
+            graphql: vm_onoff::api::http::axum::config::GrqphQL {
+                http_mount: route_graphql_http,
+                ws_mount: route_graphql_ws,
+            },
+            playground: vm_onoff::api::http::axum::config::Playground {
+                mount: route_playground.clone(),
+                extra_settings: vec![(
+                    "request.credentials".to_owned(),
+                    playground_request_credentials,
+                )]
+                .into_iter()
+                .collect(),
+            },
+        },
+    );
 
-    info!("Playground: http://localhost:8000");
+    info!("Playground: http://localhost:8000{}", &route_playground);
 
     Server::bind(&"0.0.0.0:8000".parse().unwrap())
         .serve(app.into_make_service())
@@ -59,4 +83,8 @@ async fn main() {
 
 fn getenv(key: &str) -> String {
     std::env::var(key).unwrap_or_else(|_| panic!("env var {} is not set", key))
+}
+
+fn getenvd(key: &str, default: &str) -> String {
+    std::env::var(key).unwrap_or_else(|_| default.to_owned())
 }
