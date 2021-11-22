@@ -34,7 +34,7 @@ impl Record {
     }
 
     pub fn is_expired(&self) -> bool {
-        self.expires_at >= Instant::now()
+        self.expires_at < Instant::now()
     }
 }
 
