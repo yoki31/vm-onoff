@@ -1,6 +1,7 @@
 use std::time::Instant;
 
 use tokio::sync::Mutex;
+use tracing::{debug, info};
 
 use super::TokenProvider;
 
@@ -71,12 +72,21 @@ where
 
         if let Some(ref mut cached_token) = &mut *cached_token {
             if !cached_token.is_expired() {
+                debug!(message = "Using preexisting token", token_expires_at = ?cached_token.expires_at);
                 return Ok(cached_token.clone());
             }
+            debug!(message = "Existing token expired, refreshing", token_expires_at = ?cached_token.expires_at);
         }
+
+        info!(
+            message = "No active token found, about to get a new one",
+            token_is_stale = cached_token.is_some(),
+        );
 
         let new_record = self.fetch_new_token().await?;
         cached_token.replace(new_record.clone());
+
+        debug!(message = "Got new token", token_expires_at = ?new_record.expires_at);
 
         Ok(new_record)
     }
